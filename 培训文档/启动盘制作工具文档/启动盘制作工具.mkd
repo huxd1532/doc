@@ -1,0 +1,96 @@
+#DOS分区及GPT分区简介
++ Dos分区结构  
+下图中简单地描述了DOS分区表的结构，其中boot loader与分区表合称为MBR。boot loader用于磁盘引导，通过它能实现定启动时  
+指定跳转至一个可执行程序的目的。分区表中记录用于描述系统中每一个数据区域的启始与结束，以及是否为激活状态的信息。  
+![avatar](DOS磁盘结构.png)  
++ GPT分区结构  
+下图中简单地描述了GPT分区表的结构，其中GPT头部描述了GPT分区表的个数，表示其中会有多少个GPT分区结点以及GPT的校验信息。  
+GPT分区表描述了具体的每一个基本数据分区的起始位置，分区的结束位置，以及分区的其它控制信息。数据分区用于存放用户数据，我  
+们平时能进行存储访问的部分即是该区域。GPT分区表备份区域，用于备份GPT分区表，防止GPT分区表被破坏之后数据丢失的情况发生。  
+这里为了简化GPT分区，让GPT分区的主体结构展示出来，省略掉了一些其它无关区域。真实的GPT分区可能与该结构大体上相同，但是存  
+在一些细微的差异。  
+![avatar](GPT磁盘结构.png)
+
+#文件系统结构介绍
++ 文件系统静态结构介绍  
+下图中描述了文件系统的静态结构。文件系统的开头是一段引导区域，当文件系统具有引导功能时该区域中存放与系统引导相关的内容；当该文  
+件系统不具有引导作用时，该区域的内容为空。接下来是超级块，其中记录了用于描述文件系统本身相关的控制信息，比如有几个索引区域、索  
+引类型、有几个数据区域。接下来的一块区域是索引区域，该区域中的每一个值为数据区域或者另一个索引区域的地址。数据区域用于用户数据  
+的存储。  
+![avatar](文件系统结构.png)
+
+#BIOS和EFI引导流程介绍
++ BIOS引导方式  
+BIOS的引导流程如下所示:  
+1.加载CMOS中的参数，进行自我检测，并通过解析DOS的MBR分区中的当前活动分区标识来获取与活动分区相关的信息。  
+2.读取并执行第一个活动分区内的MBR中的boot loader即，即是grub，spfdisk等程序。  
+3.依据boot loader内的的设置加载内核，内核开始硬件检测与加载驱动。  
+4.在硬件驱动加载完成之后，内核启动调用init进程。  
+5.init进程读取run_level的值，并依据该值来加载相应的软件执行需要硬件环境。  
+6.init进程加载完成之后显示login进程。  
+
++ BIOS的另外一种引导方式  
+上面提到了文件系统中有一块区域是引导区域，当其用作引导时其中存放与系统引导相关的内容。因为BIOS的另外一种引导方式是获取取有引导  
+作用的文件系统。先将其中的引导信息加载到磁盘的boot loader,然后再执行前面描述的boot loader的引导过程。
+
++ EFI引导方式  
+1.遍历GPT分区，从中查找可用于加载的分区（是否完成加载处决于EFI引导的内型）;  
+2.将可用于加载的分区以启动项的方式展示出来，并让用户选取可加载的启动项。  
+3.按照用户的选择来进行跳转。  
+4.进入系统引导流程。  
+
++ EFI的兼容模式  
+EFI启动器还有一种工作模式，即是为了兼容一些老旧的设备，它提供了与BIOS相兼容的功能模式。其执行过程如下：  
+1.识别MBR的分区结构，然后获取磁盘分区。  
+2.扫描分区中存放的EFI加载相关的内容，将其作为启动项显示出来,并让用户选取可加载的启动项。  
+3.按照用户的选择来进行跳转。  
+4.进入系统引导流程。  
+
+#使用shell命令制作启动盘
+## 制作BIOS加载方式的启动盘
++ 对U盘进行分区，并格式化。  
+> lsblk#查看要格式化的分区是否被挂载  
+> udisksctl unmount -b /dev/sda1#卸载分区  
+> sudo mkfs.fat /dev/sda1#对分区进行格式化  
+
++ 安装boot loader和PBR  
+> sudo dd if=/usr/lib/syslinux/mbr/mbr.bin of=/dev/sda bs=440 count=1#安装MBR  
+> sudo syslinux -i /dev/sda1#安装PBR  
+> sudo sfdisk -A /dev/sda 1#设置当前分区为活动分区  
+> sudo fsck -y /dev/sda1#磁盘修复  
+
++ 给安装镜像的分区设置一个标签  
+> sudo fatlabel /dev/sda1 "UOS 20"  
+
++ 挂载分区并将镜像解压到分区中  
+> sudo udisksctl mount -b /dev/sda1#挂载分区  
+> sudo 7z x -y /home/sfs/Documents/test_J.iso -o/media/root/4E6F-092C -bsp2#将镜像解压到分区  
+
++ 将U盘弹出  
+> udisksctl unmount -b /dev/sda1#卸载分区  
+> udisksctl power-off -b /dev/sda#弹出U盘  
+
+## 制作EFI加载方式的启动盘
++ 对U盘进行分区，并格式化。  
+> lsblk#查看要格式化的分区是否被挂载  
+> udisksctl unmount -b /dev/sda1#卸载分区  
+> sudo mkfs.fat /dev/sda1#对分区进行格式化  
+
++ 设置分区为当前活动分区
+> sudo sfdisk -A /dev/sda 1
+
++ 给安装镜像的分区设置一个标签  
+> sudo fatlabel /dev/sda1 "UOS 20"  
+
++ 挂载分区并将镜像解压到分区中  
+> sudo udisksctl mount -b /dev/sda1  
+> sudo 7z x -y /home/sfs/Documents/test_J.iso -o/media/root/4E6F-092C -bsp2  
+
++ 将U盘弹出  
+> udisksctl unmount -b /dev/sda1  
+> udisksctl power-off -b /dev/sda  
+
+#制作启动盘过程中碰到的问题
++ 为什么没有使用ventory
+在技术可行性研究中发现该工具并不稳定，对很多型号的设备上都不保证能成功，并且mips和arm上都没有相关的  
+软件，需要自已来实现，工作量比较大。

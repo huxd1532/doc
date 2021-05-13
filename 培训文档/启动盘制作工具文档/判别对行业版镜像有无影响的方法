@@ -1,0 +1,11 @@
+1.判定镜像是否需要添加repo选项
+a.执行命令1 
+isoinfo -f xxxxx.iso |grep -i "/Packages/anaconda_"
+
+b.执行命令2
+isoinfo -f -i ~/Downloads/uniontechos-server-20-1020e-amd64-20210426-005710.iso |grep -i "/Packages/UnionTech_release_"
+
+如果a和b的命令都有内容在终端输出,则表示启动盘制作工具会对镜像添加repo选项.
+
+2.在镜像中添加inst.repo=xxxx选项之后查看镜像是否能正常安装,如果能则表示无演响,如果不能则请去掉这一项之后判断是否能启动,如果能启动则表示可以对镜像产生了影响,否则认为对镜像无影响.
+
