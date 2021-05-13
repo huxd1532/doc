@@ -1,0 +1,13 @@
+１、https://en.wikipedia.org/wiki/Windowing_system
+２、https://en.wikipedia.org/wiki/Graphical_user_interface#Examples
+３、https://blog.csdn.net/youyou1543724847/article/details/84192430
+３、https://www.x.org/wiki/guide/concepts/#xisclientserver
+４、https://www.x.org/wiki/guide/
+
+
+
+有效：
+https://blog.csdn.net/youyou1543724847/article/details/84192430
+
+
+ CreateWellKnownSockets()　　创建侦听套接字
